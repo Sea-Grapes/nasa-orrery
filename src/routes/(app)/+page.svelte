@@ -131,6 +131,9 @@ frame.setAnimationLoop(draw)
 
 <canvas bind:this={canvas}></canvas>
 
+<div class='fixed top-1 left-1'>
+</div>
+
 <style>
 :global(html, body) {
   height: 100%;
@@ -138,8 +141,8 @@ frame.setAnimationLoop(draw)
 }
 
 canvas {
-  display: block;
   width: 100%;
   height: 100%;
 }
+
 </style>
