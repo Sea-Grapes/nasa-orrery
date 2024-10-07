@@ -227,6 +227,7 @@ frame.setAnimationLoop(draw)
 :global(html, body) {
   height: 100%;
   overflow: hidden;
+  background-color: black;
 }
 
 canvas {
