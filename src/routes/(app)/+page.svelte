@@ -29,14 +29,15 @@ import {
     Vector4,
     WebGLRenderer,
     Layers,
-    BufferAttribute
+    BufferAttribute,
+    SphereGeometry
 } from 'three';
 
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-    import { degToRad } from 'three/src/math/MathUtils';
+import { degToRad } from 'three/src/math/MathUtils';
 
 let canvas;
 
@@ -49,7 +50,7 @@ CameraControls.install({ THREE: {
 
 const scene = new Scene()
 const clock = new Clock()
-const camera = new PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000)
+const camera = new PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 10000)
 camera.position.set( 0, 5, 5 );
 camera.lookAt(0, 0, 1)
 const controls = new CameraControls(camera, canvas)
@@ -83,13 +84,6 @@ L: mean longitude (deg/cent)
 w: longitude of perihelion (deg/cent)
 o: (raan) longitude of ascending node (deg/cent)
 
-Semi-major axis (a): half the distance of the major axis (AU)
-Eccentricity (e): shape of the ellipse
-Inclination (i): vertical tilt (degrees)
-mean longitude (l): something (degrees)
-longitude of perhelion/perapsis (w): something
-longitude of ascending node (ohm): something (degrees)
-
 Epoch: something (MJD)
 
 mean  
@@ -98,30 +92,62 @@ mean
 const data = [
   {
     name: "mercury",
-    axis: 0.38709927,
-    eccent: 0.20563593,
-    inclin: 7.00497902,
+    axis: 1,
+    eccent: 0.95,
+    inclin: 0,
     long_mean: 252.25032350,
-    long_peri: 77.45779628,
-    long_asc_node: 48.33076593,
+    long_peri: 102.9,
+    long_asc_node: 0,
   },
 ]
 
+let anomaly = 0
+const RAD = Math.PI/180
+
 function orbit_compute(data) {
+
+  let {
+    axis,
+    eccent: e,
+    inclin: i,
+    long_mean,
+    long_peri: w,
+    long_asc_node: O
+  } = data
+
+  i = degToRad(i)
+  w = degToRad(w)
+  O = degToRad(O)
+  const v = degToRad(anomaly)
+  const r = (anomaly * (1 - e^2)) / (1 + e * Math.cos(v));
+
+  const x = r * Math.cos(v)
+  const y = r * Math.sin(v)
+
   return new Vector3(
-    
+    x*(Math.cos(w)*Math.cos(O) - Math.sin(w)*Math.sin(O)*Math.cos(i)) - y*(Math.sin(w)*Math.cos(O) + Math.cos(w)*Math.sin(O)*Math.cos(i)),
+    x*(Math.cos(w)*Math.cos(O) + Math.sin(w)*Math.sin(O)*Math.cos(i)) - y*(Math.sin(w)*Math.cos(O) - Math.cos(w)*Math.sin(O)*Math.cos(i)),
+    x*(Math.sin(w)*Math.sin(i)) + (Math.cos(w)*Math.sin(i))
   )
 }
 
 const epoch = Date.now()
-// const mesh_spheretest = new Mesh(
-//   new SphereGeometry(15, 32, 16),
-//   new MeshBasicMaterial({ color: 0xffff00 })
-// )
-// scene.add(mesh_spheretest)
+
+const mesh_spheretest = new Mesh(
+  new SphereGeometry(1, 32, 16),
+  new MeshBasicMaterial({ color: 0xffff00 })
+)
+
+mesh_spheretest.position.set(10, 0, 0)
+
+scene.add(mesh_spheretest)
 
 const curve = new EllipseCurve(0, 0, 10, 10);
-const colors = Array.from({length:50-10}, (v, i) => Array.from({length: 3}, v => i/50)).flat()
+const colors = Array.from({length:40}, (v, i) => Array.from({length: 3}, v => (40-i)/40)).flat()
+mesh_spheretest.layers.set(1)
+
+
+console.log(colors)
 
 
 const points = curve.getPoints(50);
@@ -168,6 +194,13 @@ resize()
 function draw() {
   const dt = clock.getDelta();
 	controls.update(dt);
+
+  // anomaly += 1
+
+  // if(anomaly > 360) anomaly = 0
+
+  // console.log(orbit_compute(data[0]).divide(new Vector3(2, 2, 2)))
+  // mesh_spheretest.position.copy(orbit_compute(data[0]).divide(new Vector3(10, 10, 10)))
   
   frame.autoClear = false
   camera.layers.set(1)
@@ -185,7 +218,9 @@ frame.setAnimationLoop(draw)
 
 <canvas bind:this={canvas}></canvas>
 
-<div class='fixed top-1 left-1'>
+<div class='fixed top-4 left-4'>
+  <h1 class='text-gray-300 font-semibold'>Orrery (Incomplete)</h1>
+  <p class='text-gray-500 max-w-[30ch]'>Unfortunately this was all I could complete because I had too much homework. Maybe next time?</p>
 </div>
 
 <style>
