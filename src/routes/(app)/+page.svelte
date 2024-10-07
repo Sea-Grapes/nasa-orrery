@@ -7,12 +7,14 @@ import CameraControls from 'camera-controls';
 import {
     Box3,
     BoxGeometry,
-    CircleGeometry,
+    BufferGeometry,
     Clock,
     DirectionalLight,
+    EllipseCurve,
     GridHelper,
     HemisphereLight,
-    LineLoop,
+    Line,
+    LineBasicMaterial,
     Matrix4,
     Mesh,
     MeshBasicMaterial,
@@ -26,11 +28,20 @@ import {
     Vector3,
     Vector4,
     WebGLRenderer,
-    SphereGeometry,
+    Layers,
+    BufferAttribute
 } from 'three';
+
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { degToRad } from 'three/src/math/MathUtils';
+
 let canvas;
 
 $effect(() => {
+
 
 CameraControls.install({ THREE: {
   Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster
@@ -42,8 +53,25 @@ const camera = new PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000)
 camera.position.set( 0, 5, 5 );
 camera.lookAt(0, 0, 1)
 const controls = new CameraControls(camera, canvas)
-const frame = new WebGLRenderer({ canvas })
+const frame = new WebGLRenderer({ canvas, antialias: true })
 
+
+const layer_bloom = new Layers()
+layer_bloom.set(1)
+
+const pass_render = new RenderPass(scene, camera)
+
+const pass_bloom = new UnrealBloomPass(new Vector2(innerWidth, innerHeight), 1.5, 0.4, 0.85);
+pass_bloom.threshold = 0;
+pass_bloom.strength = 0.2;
+pass_bloom.radius = 0;
+
+const pass_output = new OutputPass()
+
+const composer = new EffectComposer(frame)
+composer.addPass(pass_render)
+composer.addPass(pass_bloom)
+composer.addPass(pass_output)
 /*
 
 Keplarian parameters spec
@@ -92,6 +120,25 @@ const epoch = Date.now()
 // )
 // scene.add(mesh_spheretest)
 
+const curve = new EllipseCurve(0, 0, 10, 10);
+const colors = Array.from({length:50-10}, (v, i) => Array.from({length: 3}, v => i/50)).flat()
+
+
+const points = curve.getPoints(50);
+let geo_orbit = new BufferGeometry().setFromPoints(points)
+geo_orbit.setAttribute('color', new BufferAttribute(new Float32Array(colors), 3))
+const orbit = new Line(
+  geo_orbit,
+  new LineBasicMaterial({ vertexColors: true })
+);
+
+orbit.layers.set(1)
+orbit.rotation.x = degToRad(90)
+scene.add(orbit)
+
+
+
+
 const mesh_boxtest = new Mesh(
 	new BoxGeometry( 1, 1, 1 ),
 	new MeshBasicMaterial( { color: 0xff0000, wireframe: true } )
@@ -113,6 +160,7 @@ function resize() {
   camera.aspect = innerWidth / innerHeight
   camera.updateProjectionMatrix()
   frame.setSize(innerWidth, innerHeight)
+  composer.setSize(innerWidth, innerHeight);
 }
 addEventListener('resize', resize)
 resize()
@@ -121,6 +169,12 @@ function draw() {
   const dt = clock.getDelta();
 	controls.update(dt);
   
+  frame.autoClear = false
+  camera.layers.set(1)
+  composer.render()
+
+  camera.layers.set(0)
+  frame.clearDepth()
   frame.render(scene, camera)
 }
 frame.setAnimationLoop(draw)
